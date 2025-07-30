@@ -14,6 +14,7 @@ interface ShapeConfig {
   strokes?: ReadonlyArray<Paint>;
   strokeWeight?: number;
   cornerRadius?: number;
+  zIndex?: number; // Layer ordering - lower numbers go to back, higher to front
   
   // Star-specific properties
   pointCount?: number;
@@ -91,11 +92,41 @@ async function generateShape(config: ShapeConfig): Promise<SceneNode> {
   }
   
   if (config.fills && 'fills' in node) {
-    node.fills = config.fills;
+    // Ensure fills have proper types and convert hex colors
+    const validatedFills = config.fills.map((fill: any) => {
+      if (fill.type === 'SOLID' || fill.type === 'solid') {
+        let color = fill.color;
+        // Convert hex color to RGB if needed
+        if (typeof color === 'string' && color.startsWith('#')) {
+          color = hexToRgb(color);
+        }
+        return {
+          type: 'SOLID' as const,
+          color: color
+        } as SolidPaint;
+      }
+      return fill;
+    });
+    node.fills = validatedFills;
   }
   
   if (config.strokes && 'strokes' in node) {
-    node.strokes = config.strokes;
+    // Ensure strokes have proper types and convert hex colors
+    const validatedStrokes = config.strokes.map((stroke: any) => {
+      if (stroke.type === 'SOLID' || stroke.type === 'solid') {
+        let color = stroke.color;
+        // Convert hex color to RGB if needed
+        if (typeof color === 'string' && color.startsWith('#')) {
+          color = hexToRgb(color);
+        }
+        return {
+          type: 'SOLID' as const,
+          color: color
+        } as SolidPaint;
+      }
+      return stroke;
+    });
+    node.strokes = validatedStrokes;
   }
   
   if (config.strokeWeight && 'strokeWeight' in node) {
@@ -105,11 +136,31 @@ async function generateShape(config: ShapeConfig): Promise<SceneNode> {
   return node;
 }
 
+// Helper function to convert hex color to RGB
+function hexToRgb(hex: string): { r: number; g: number; b: number } {
+  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  if (!result) {
+    throw new Error(`Invalid hex color: ${hex}`);
+  }
+  return {
+    r: parseInt(result[1], 16) / 255,
+    g: parseInt(result[2], 16) / 255,
+    b: parseInt(result[3], 16) / 255,
+  };
+}
+
 // Function to generate multiple shapes
 async function generateShapes(config: MultiShapeConfig): Promise<SceneNode[]> {
   const nodes: SceneNode[] = [];
   
-  for (const shapeConfig of config.shapes) {
+  // Sort shapes by zIndex (lower numbers first, undefined zIndex defaults to 0)
+  const sortedShapes = [...config.shapes].sort((a, b) => {
+    const aZ = a.zIndex ?? 0;
+    const bZ = b.zIndex ?? 0;
+    return aZ - bZ;
+  });
+  
+  for (const shapeConfig of sortedShapes) {
     const node = await generateShape(shapeConfig);
     nodes.push(node);
   }

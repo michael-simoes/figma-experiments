@@ -52,52 +52,63 @@ document.getElementById('cancel').onclick = () => {
   parent.postMessage({ pluginMessage: { type: 'cancel' } }, '*')
 }
 
-// Pre-fill with example multi-shape JSON for wireframe testing
+// Pre-fill with example multi-shape JSON demonstrating zIndex layering
 document.getElementById('json-config').value = JSON.stringify({
   "shapes": [
     {
       "type": "rectangle",
       "position": { "x": 0, "y": 0 },
+      "size": { "width": 400, "height": 300 },
+      "fills": [{ "type": "SOLID", "color": { "r": 0.95, "g": 0.95, "b": 0.95 } }],
+      "zIndex": 1
+    },
+    {
+      "type": "rectangle",
+      "position": { "x": 0, "y": 0 },
       "size": { "width": 400, "height": 60 },
-      "fills": [{ "type": "SOLID", "color": { "r": 0.9, "g": 0.9, "b": 0.9 } }]
+      "fills": [{ "type": "SOLID", "color": { "r": 0.2, "g": 0.5, "b": 0.9 } }],
+      "zIndex": 2
     },
     {
       "type": "text",
-      "position": { "x": 20, "y": 20 },
+      "position": { "x": 20, "y": 25 },
       "text": "App Header",
       "fontSize": 24,
-      "fills": [{ "type": "SOLID", "color": { "r": 0.1, "g": 0.1, "b": 0.1 } }]
-    },
-    {
-      "type": "rectangle",
-      "position": { "x": 20, "y": 80 },
-      "size": { "width": 360, "height": 40 },
-      "cornerRadius": 4,
       "fills": [{ "type": "SOLID", "color": { "r": 1, "g": 1, "b": 1 } }],
-      "strokes": [{ "type": "SOLID", "color": { "r": 0.8, "g": 0.8, "b": 0.8 } }],
-      "strokeWeight": 1
-    },
-    {
-      "type": "text",
-      "position": { "x": 30, "y": 95 },
-      "text": "Search...",
-      "fontSize": 16,
-      "fills": [{ "type": "SOLID", "color": { "r": 0.6, "g": 0.6, "b": 0.6 } }]
+      "zIndex": 3
     },
     {
       "type": "rectangle",
-      "position": { "x": 20, "y": 140 },
-      "size": { "width": 360, "height": 200 },
-      "fills": [{ "type": "SOLID", "color": { "r": 0.95, "g": 0.95, "b": 0.95 } }],
+      "position": { "x": 50, "y": 100 },
+      "size": { "width": 300, "height": 150 },
+      "fills": [{ "type": "SOLID", "color": { "r": 1, "g": 1, "b": 1 } }],
+      "cornerRadius": 8,
       "strokes": [{ "type": "SOLID", "color": { "r": 0.8, "g": 0.8, "b": 0.8 } }],
-      "strokeWeight": 1
+      "strokeWeight": 1,
+      "zIndex": 2
     },
     {
       "type": "text",
-      "position": { "x": 30, "y": 160 },
-      "text": "Content Area",
+      "position": { "x": 70, "y": 130 },
+      "text": "Content Card",
       "fontSize": 18,
-      "fills": [{ "type": "SOLID", "color": { "r": 0.4, "g": 0.4, "b": 0.4 } }]
+      "fills": [{ "type": "SOLID", "color": { "r": 0.1, "g": 0.1, "b": 0.1 } }],
+      "zIndex": 3
+    },
+    {
+      "type": "ellipse",
+      "position": { "x": 300, "y": 80 },
+      "size": { "width": 40, "height": 40 },
+      "fills": [{ "type": "SOLID", "color": { "r": 0.9, "g": 0.3, "b": 0.3 } }],
+      "zIndex": 4
+    },
+    {
+      "type": "text",
+      "position": { "x": 315, "y": 100 },
+      "text": "5",
+      "fontSize": 16,
+      "fills": [{ "type": "SOLID", "color": { "r": 1, "g": 1, "b": 1 } }],
+      "zIndex": 5
     }
   ]
 }, null, 2);
