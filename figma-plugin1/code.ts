@@ -27,6 +27,10 @@ interface ShapeConfig {
   fontSize?: number;
 }
 
+interface MultiShapeConfig {
+  shapes: ShapeConfig[];
+}
+
 async function generateShape(config: ShapeConfig): Promise<SceneNode> {
   let node: SceneNode;
   
@@ -101,6 +105,18 @@ async function generateShape(config: ShapeConfig): Promise<SceneNode> {
   return node;
 }
 
+// Function to generate multiple shapes
+async function generateShapes(config: MultiShapeConfig): Promise<SceneNode[]> {
+  const nodes: SceneNode[] = [];
+  
+  for (const shapeConfig of config.shapes) {
+    const node = await generateShape(shapeConfig);
+    nodes.push(node);
+  }
+  
+  return nodes;
+}
+
 // Helper function for solid colors
 function createSolidFill(r: number, g: number, b: number): SolidPaint {
   return {
@@ -116,7 +132,7 @@ figma.showUI(__html__, { width: 500, height: 520 });
 // Calls to "parent.postMessage" from within the HTML page will trigger this
 // callback. The callback will be passed the "pluginMessage" property of the
 // posted message.
-figma.ui.onmessage = async (msg: {type: string, count: number, config?: ShapeConfig}) => {
+figma.ui.onmessage = async (msg: {type: string, count: number, config?: ShapeConfig | MultiShapeConfig}) => {
   // One way of distinguishing between different types of messages sent from
   // your HTML page is to use an object with a "type" property like this.
   if (msg.type === 'create-star') {
@@ -133,10 +149,19 @@ figma.ui.onmessage = async (msg: {type: string, count: number, config?: ShapeCon
     figma.viewport.scrollAndZoomIntoView([starNode]);
   }
   if (msg.type === 'create-shape-from-json' && msg.config) {
-    const newNode = await generateShape(msg.config);
-    figma.currentPage.appendChild(newNode);
-    figma.currentPage.selection = [newNode];
-    figma.viewport.scrollAndZoomIntoView([newNode]);
+    // Check if it's a multi-shape config (has 'shapes' property)
+    if ('shapes' in msg.config) {
+      const newNodes = await generateShapes(msg.config as MultiShapeConfig);
+      newNodes.forEach(node => figma.currentPage.appendChild(node));
+      figma.currentPage.selection = newNodes;
+      figma.viewport.scrollAndZoomIntoView(newNodes);
+    } else {
+      // Single shape config
+      const newNode = await generateShape(msg.config as ShapeConfig);
+      figma.currentPage.appendChild(newNode);
+      figma.currentPage.selection = [newNode];
+      figma.viewport.scrollAndZoomIntoView([newNode]);
+    }
   }
   if (msg.type === 'create-shapes') {
     // This plugin creates rectangles on the screen.
