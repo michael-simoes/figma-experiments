@@ -8,24 +8,22 @@
 
 interface ShapeConfig {
   type: 'rectangle' | 'ellipse' | 'star' | 'polygon' | 'line' | 'frame' | 'text';
-  position?: { x: number; y: number };
-  size?: { width: number; height: number };
-  fills?: ReadonlyArray<Paint>;
-  strokes?: ReadonlyArray<Paint>;
-  strokeWeight?: number;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  fill?: string; // Hex color, color name, or 'transparent'
+  stroke?: string;
+  strokeWidth?: number;
   cornerRadius?: number;
-  zIndex?: number; // Layer ordering - lower numbers go to back, higher to front
-  
-  // Star-specific properties
-  pointCount?: number;
-  innerRadius?: number;
-  
-  // Polygon-specific properties
-  polygonPointCount?: number;
-  
-  // Text-specific properties
+  zIndex?: number;
   text?: string;
   fontSize?: number;
+  // Star-specific
+  pointCount?: number;
+  innerRadius?: number;
+  // Polygon-specific
+  polygonPointCount?: number;
 }
 
 interface MultiShapeConfig {
@@ -81,59 +79,72 @@ async function generateShape(config: ShapeConfig): Promise<SceneNode> {
       throw new Error(`Unsupported shape type: ${config.type}`);
   }
   
-  // Apply common properties
-  if (config.position) {
-    node.x = config.position.x;
-    node.y = config.position.y;
+  // Apply position
+  node.x = config.x;
+  node.y = config.y;
+  
+  // Apply size
+  if ('resize' in node) {
+    node.resize(config.width, config.height);
   }
   
-  if (config.size && 'resize' in node) {
-    node.resize(config.size.width, config.size.height);
+  // Apply fill color
+  if (config.fill && config.fill !== 'transparent' && 'fills' in node) {
+    const hexColor = normalizeColor(config.fill);
+    if (hexColor !== 'transparent') {
+      node.fills = [{
+        type: 'SOLID' as const,
+        color: hexToRgb(hexColor)
+      }];
+    }
   }
   
-  if (config.fills && 'fills' in node) {
-    // Ensure fills have proper types and convert hex colors
-    const validatedFills = config.fills.map((fill: any) => {
-      if (fill.type === 'SOLID' || fill.type === 'solid') {
-        let color = fill.color;
-        // Convert hex color to RGB if needed
-        if (typeof color === 'string' && color.startsWith('#')) {
-          color = hexToRgb(color);
-        }
-        return {
-          type: 'SOLID' as const,
-          color: color
-        } as SolidPaint;
-      }
-      return fill;
-    });
-    node.fills = validatedFills;
-  }
-  
-  if (config.strokes && 'strokes' in node) {
-    // Ensure strokes have proper types and convert hex colors
-    const validatedStrokes = config.strokes.map((stroke: any) => {
-      if (stroke.type === 'SOLID' || stroke.type === 'solid') {
-        let color = stroke.color;
-        // Convert hex color to RGB if needed
-        if (typeof color === 'string' && color.startsWith('#')) {
-          color = hexToRgb(color);
-        }
-        return {
-          type: 'SOLID' as const,
-          color: color
-        } as SolidPaint;
-      }
-      return stroke;
-    });
-    node.strokes = validatedStrokes;
-  }
-  
-  if (config.strokeWeight && 'strokeWeight' in node) {
-    node.strokeWeight = config.strokeWeight;
+  // Apply stroke color
+  if (config.stroke && 'strokes' in node) {
+    const hexColor = normalizeColor(config.stroke);
+    node.strokes = [{
+      type: 'SOLID' as const,
+      color: hexToRgb(hexColor)
+    }];
+    if (config.strokeWidth && 'strokeWeight' in node) {
+      node.strokeWeight = config.strokeWidth;
+    }
   }
   
   return node;
+}
+
+// Color name to hex mapping
+const colorNames: { [key: string]: string } = {
+  'transparent': 'transparent',
+  'red': '#ff0000',
+  'green': '#00ff00',
+  'blue': '#0000ff',
+  'black': '#000000',
+  'white': '#ffffff',
+  'gray': '#808080',
+  'grey': '#808080',
+  'yellow': '#ffff00',
+  'orange': '#ffa500',
+  'purple': '#800080',
+  'pink': '#ffc0cb',
+  'brown': '#a52a2a',
+  'primary': '#007bff',
+  'secondary': '#6c757d',
+  'success': '#28a745',
+  'danger': '#dc3545',
+  'warning': '#ffc107',
+  'info': '#17a2b8',
+  'light': '#f8f9fa',
+  'dark': '#343a40',
+};
+
+// Helper function to convert color name or hex to hex
+function normalizeColor(color: string): string {
+  if (color === 'transparent') return 'transparent';
+  if (color.startsWith('#')) return color;
+  if (colorNames[color.toLowerCase()]) return colorNames[color.toLowerCase()];
+  return color; // Return as-is if not found
 }
 
 // Helper function to convert hex color to RGB
@@ -148,6 +159,8 @@ function hexToRgb(hex: string): { r: number; g: number; b: number } {
     b: parseInt(result[3], 16) / 255,
   };
 }
+
+
 
 // Function to generate multiple shapes
 async function generateShapes(config: MultiShapeConfig): Promise<SceneNode[]> {
@@ -167,6 +180,8 @@ async function generateShapes(config: MultiShapeConfig): Promise<SceneNode[]> {
   
   return nodes;
 }
+
+
 
 // Helper function for solid colors
 function createSolidFill(r: number, g: number, b: number): SolidPaint {
@@ -189,11 +204,13 @@ figma.ui.onmessage = async (msg: {type: string, count: number, config?: ShapeCon
   if (msg.type === 'create-star') {
     const starNode = await generateShape({
       type: 'star',
-      position: { x: 50, y: 50 },
-      size: { width: 200, height: 200 },
+      x: 50,
+      y: 50,
+      width: 200,
+      height: 200,
       pointCount: 7,
       innerRadius: 0.6,
-      fills: [createSolidFill(1, 0, 0)]
+      fill: 'red'
     });
     figma.currentPage.appendChild(starNode);
     figma.currentPage.selection = [starNode];
