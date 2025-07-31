@@ -100,14 +100,16 @@ async function generateShape(config: ShapeConfig): Promise<SceneNode> {
   }
   
   // Apply stroke color
-  if (config.stroke && 'strokes' in node) {
+  if (config.stroke && config.stroke !== 'transparent' && 'strokes' in node) {
     const hexColor = normalizeColor(config.stroke);
-    node.strokes = [{
-      type: 'SOLID' as const,
-      color: hexToRgb(hexColor)
-    }];
-    if (config.strokeWidth && 'strokeWeight' in node) {
-      node.strokeWeight = config.strokeWidth;
+    if (hexColor !== 'transparent') {
+      node.strokes = [{
+        type: 'SOLID' as const,
+        color: hexToRgb(hexColor)
+      }];
+      if (config.strokeWidth && 'strokeWeight' in node) {
+        node.strokeWeight = config.strokeWidth;
+      }
     }
   }
   
@@ -219,10 +221,35 @@ figma.ui.onmessage = async (msg: {type: string, count: number, config?: ShapeCon
   if (msg.type === 'create-shape-from-json' && msg.config) {
     // Check if it's a multi-shape config (has 'shapes' property)
     if ('shapes' in msg.config) {
+      const frame = figma.createFrame();
+      frame.name = "Generated Shapes";
       const newNodes = await generateShapes(msg.config as MultiShapeConfig);
-      newNodes.forEach(node => figma.currentPage.appendChild(node));
-      figma.currentPage.selection = newNodes;
-      figma.viewport.scrollAndZoomIntoView(newNodes);
+      newNodes.forEach(node => frame.appendChild(node));
+
+      // Resize frame to fit all nodes and center it
+      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+      newNodes.forEach(node => {
+        if (node.x < minX) minX = node.x;
+        if (node.y < minY) minY = node.y;
+        if (node.x + node.width > maxX) maxX = node.x + node.width;
+        if (node.y + node.height > maxY) maxY = node.y + node.height;
+      });
+
+      const frameWidth = maxX - minX;
+      const frameHeight = maxY - minY;
+      frame.resize(frameWidth, frameHeight);
+      frame.x = minX;
+      frame.y = minY;
+
+      // Adjust node positions to be relative to the frame
+      newNodes.forEach(node => {
+        node.x -= minX;
+        node.y -= minY;
+      });
+
+      figma.currentPage.appendChild(frame);
+      figma.currentPage.selection = [frame];
+      figma.viewport.scrollAndZoomIntoView([frame]);
     } else {
       // Single shape config
       const newNode = await generateShape(msg.config as ShapeConfig);
